@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep:*)",
+      "Bash(sui move:*)",
+      "Bash(timeout:*)",
+      "Bash(find:*)",
+      "Bash(sui:*)",
+      "Bash(chmod:*)",
+      "Bash(./test_validation.sh:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
