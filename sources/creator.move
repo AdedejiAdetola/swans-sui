@@ -1,12 +1,3 @@
-// 3. creator.move
-// Purpose: Creator profile and creator-specific logic.
-
-// Put in this file:
-
-// Creator struct
-// register_creator function
-// Creator-specific helper/view functions
-// (Optional) Creator-related event structs
 
 
 module swans::creator {

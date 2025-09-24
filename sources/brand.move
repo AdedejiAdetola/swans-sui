@@ -1,13 +1,4 @@
-// 2. brand.move
-// Purpose: Brand profile and brand-specific logic.
 
-// Put in this file:
-
-// Brand struct
-// register_brand function
-// fund_brand_account function
-// Brand-specific helper/view functions (e.g., get_brand_balance)
-// (Optional) Brand-related event structs
 
 module swans::brand {
     use sui::object::{Self, ID, UID};

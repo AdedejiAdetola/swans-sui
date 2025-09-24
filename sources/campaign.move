@@ -1,23 +1,3 @@
-// 4. campaign.move
-// Purpose: Campaign, application, content, payment, and campaign-specific logic.
-
-// Put in this file:
-
-// Campaign struct
-// CampaignApplication struct
-// Content struct
-// PaymentReceipt struct
-// All campaign-related entry functions:
-// create_campaign
-// apply_to_campaign
-// submit_content
-// review_content
-// publish_content
-// update_engagement_metrics
-// select_winners_and_pay_bonuses
-// calculate_engagement_bonus
-// Campaign-specific helper/view functions
-// (Optional) Campaign/content/payment event structs
 
 
 module swans::campaign {

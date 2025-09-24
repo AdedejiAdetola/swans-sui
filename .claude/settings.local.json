@@ -7,7 +7,13 @@
       "Bash(find:*)",
       "Bash(sui:*)",
       "Bash(chmod:*)",
-      "Bash(./test_validation.sh:*)"
+      "Bash(./test_validation.sh:*)",
+      "WebFetch(domain:docs.sui.io)",
+      "WebFetch(domain:docs.sui.io)",
+      "WebSearch",
+      "WebFetch(domain:move-book.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []

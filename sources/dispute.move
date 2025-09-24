@@ -1,306 +1,415 @@
-// 5. dispute.move
-// Purpose: Dispute management and resolution.
-
-// Put in this file:
-
-// Dispute struct
-// open_dispute function
-// add_dispute_evidence function
-// resolve_dispute function
-// Dispute-specific helper/view functions
-// (Optional) Dispute event structs
-
-
-
-module swans::dispute {
-    use sui::object::{Self, UID};
+/// Dispute resolution management module
+module swans::disputes {
+    use std::string::{Self, String};
+    use std::option::{Self, Option};
+    use std::vector;
+    use sui::object::{Self, UID, ID};
     use sui::tx_context::{Self, TxContext};
     use sui::transfer;
     use sui::clock::{Self, Clock};
-    use sui::event;
-    use std::string::{Self, String};
-    use std::option::{Self, Option};
     
-    use swans::registry::{Self, PlatformRegistry};
-    use swans::campaign::{Self, Campaign};
-    use swans::types::{Self, DisputeStatus};
+    use swans::events;
+    use swans::profiles::{BrandCap, CreatorCap, AdminCap};
 
-    // ===== Dispute Struct =====
+    // === Error Constants ===
+    const EDISPUTE_ALREADY_EXISTS: u64 = 500;
+    const EINVALID_DISPUTE_TYPE: u64 = 501;
+    const EDISPUTE_NOT_FOUND: u64 = 502;
+    const EUNAUTHORIZED: u64 = 503;
+    const EINVALID_STATUS: u64 = 504;
+    const EEVIDENCE_LIMIT_EXCEEDED: u64 = 505;
+    const EINVALID_RESOLUTION: u64 = 506;
+
+    // Dispute type constants
+    const DISPUTE_TYPE_PAYMENT: u8 = 0;
+    const DISPUTE_TYPE_CONTENT: u8 = 1;
+    const DISPUTE_TYPE_CONTRACT: u8 = 2;
+
+    // Dispute status constants
+    const DISPUTE_STATUS_FILED: u8 = 0;
+    const DISPUTE_STATUS_IN_REVIEW: u8 = 1;
+    const DISPUTE_STATUS_RESOLVED: u8 = 2;
+    const DISPUTE_STATUS_CLOSED: u8 = 3;
+
+    // === Core Structs ===
+
+    /// Platform capability for dispute resolution
+    public struct DisputeResolutionCap has key, store {
+        id: UID,
+        resolver_address: address,
+    }
+
+    /// Dispute resolution record (shared object)
     public struct Dispute has key {
         id: UID,
+        dispute_id: String,                // Unique dispute identifier
+        campaign_id: ID,                   // Campaign reference
+        content_id: Option<ID>,            // Related content if applicable
+        initiator: address,                // Who filed the dispute
+        respondent: address,               // Other party in dispute
+        dispute_type: u8,                  // 0=Payment, 1=Content, 2=Contract
+        status: u8,                        // 0=Filed, 1=InReview, 2=Resolved, 3=Closed
+        description: String,               // Dispute description
+        initiator_evidence: vector<String>, // Evidence URLs from initiator
+        respondent_evidence: vector<String>, // Evidence URLs from respondent
+        resolution: Option<String>,        // Final resolution
+        resolution_timestamp: Option<u64>, // Resolution time
+        filed_timestamp: u64,              // Filing time
+        resolver_address: Option<address>, // Assigned resolver
+    }
+
+    // === Public Functions ===
+
+    /// File a dispute as a brand
+    public entry fun file_dispute_as_brand(
+        brand_cap: &BrandCap,
+        campaign_id: ID,
+        content_id: Option<ID>,
+        dispute_type: u8,
         dispute_id: String,
-        campaign_id: String,
-        creator_id: String,
-        brand_address: address,
-        creator_address: address,
-        initiated_by: address,
-        status: DisputeStatus,
-        dispute_type: String, // "payment", "content", "contract_violation", etc.
         description: String,
-        brand_evidence: String,
-        creator_evidence: String,
-        creation_timestamp: u64,
-        resolution_timestamp: Option<u64>,
-        resolution_notes: String,
-        resolved_by: Option<address>,
-    }
-
-    // ===== Events =====
-    public struct DisputeOpened has copy, drop {
-        dispute_id: String,
-        campaign_id: String,
-        creator_id: String,
-        initiated_by: address,
-        dispute_type: String,
-    }
-
-    public struct DisputeEvidenceAdded has copy, drop {
-        dispute_id: String,
-        submitted_by: address,
-        evidence_type: String, // "brand" or "creator"
-    }
-
-    public struct DisputeResolved has copy, drop {
-        dispute_id: String,
-        resolved_by: address,
-        resolution_notes: String,
-    }
-
-    // ===== Dispute Management =====
-
-    /// Open a dispute
-    public entry fun open_dispute(
-        campaign: &Campaign,
-        dispute_id: String,
-        creator_id: String,
-        dispute_type: String,
-        description: String,
+        evidence_urls: vector<String>,
+        respondent: address,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        let sender = tx_context::sender(ctx);
+        // Validate dispute type
+        assert!(dispute_type <= DISPUTE_TYPE_CONTRACT, EINVALID_DISPUTE_TYPE);
+        assert!(!string::is_empty(&description), EINVALID_RESOLUTION);
         
-        // Verify the sender has authority to open dispute
-        assert!(sender == campaign::get_brand_owner(campaign) || 
-                campaign::has_applied(campaign, creator_id), types::err_not_authorized());
-
-        // Get creator address (in a real implementation, we'd look this up from registry)
-        let creator_address = sender; // Simplified for demo
-
-        let dispute = Dispute {
-            id: object::new(ctx),
+        let dispute = create_dispute(
             dispute_id,
-            campaign_id: campaign::get_campaign_id(campaign),
-            creator_id,
-            brand_address: campaign::get_brand_owner(campaign),
-            creator_address,
-            initiated_by: sender,
-            status: types::new_dispute_status(types::dispute_open()),
+            campaign_id,
+            content_id,
+            tx_context::sender(ctx),
+            respondent,
             dispute_type,
             description,
-            brand_evidence: string::utf8(b""),
-            creator_evidence: string::utf8(b""),
-            creation_timestamp: clock::timestamp_ms(clock),
-            resolution_timestamp: option::none(),
-            resolution_notes: string::utf8(b""),
-            resolved_by: option::none(),
-        };
-
-        event::emit(DisputeOpened {
-            dispute_id: dispute.dispute_id,
-            campaign_id: dispute.campaign_id,
-            creator_id: dispute.creator_id,
-            initiated_by: sender,
+            evidence_urls,
+            clock::timestamp_ms(clock),
+            ctx
+        );
+        
+        // Emit dispute filed event
+        events::emit_dispute_filed(
+            object::uid_to_inner(&dispute.id),
+            campaign_id,
+            tx_context::sender(ctx),
             dispute_type,
-        });
-
+        );
+        
+        // Share dispute object for multi-party access
         transfer::share_object(dispute);
     }
 
-    /// Add evidence to dispute
-    public entry fun add_dispute_evidence(
+    /// File a dispute as a creator
+    public entry fun file_dispute_as_creator(
+        creator_cap: &CreatorCap,
+        campaign_id: ID,
+        content_id: Option<ID>,
+        dispute_type: u8,
+        dispute_id: String,
+        description: String,
+        evidence_urls: vector<String>,
+        respondent: address,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        // Validate dispute type
+        assert!(dispute_type <= DISPUTE_TYPE_CONTRACT, EINVALID_DISPUTE_TYPE);
+        assert!(!string::is_empty(&description), EINVALID_RESOLUTION);
+        
+        let dispute = create_dispute(
+            dispute_id,
+            campaign_id,
+            content_id,
+            tx_context::sender(ctx),
+            respondent,
+            dispute_type,
+            description,
+            evidence_urls,
+            clock::timestamp_ms(clock),
+            ctx
+        );
+        
+        // Emit dispute filed event
+        events::emit_dispute_filed(
+            object::uid_to_inner(&dispute.id),
+            campaign_id,
+            tx_context::sender(ctx),
+            dispute_type,
+        );
+        
+        // Share dispute object for multi-party access
+        transfer::share_object(dispute);
+    }
+
+    /// Submit additional evidence to an existing dispute
+    public entry fun submit_evidence(
         dispute: &mut Dispute,
-        evidence: String,
+        evidence_url: String,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         let sender = tx_context::sender(ctx);
-        assert!(sender == dispute.brand_address || sender == dispute.creator_address, types::err_not_authorized());
-        assert!(types::dispute_status_value(&dispute.status) == types::dispute_open(), types::err_invalid_status());
-
-        let evidence_type = if (sender == dispute.brand_address) {
-            dispute.brand_evidence = evidence;
-            string::utf8(b"brand")
+        
+        // Verify sender is a party to the dispute
+        assert!(sender == dispute.initiator || sender == dispute.respondent, EUNAUTHORIZED);
+        assert!(dispute.status == DISPUTE_STATUS_FILED || dispute.status == DISPUTE_STATUS_IN_REVIEW, EINVALID_STATUS);
+        
+        // Add evidence to appropriate list
+        if (sender == dispute.initiator) {
+            assert!(vector::length(&dispute.initiator_evidence) < 10, EEVIDENCE_LIMIT_EXCEEDED); // Max 10 pieces of evidence
+            vector::push_back(&mut dispute.initiator_evidence, evidence_url);
         } else {
-            dispute.creator_evidence = evidence;
-            string::utf8(b"creator")
+            assert!(vector::length(&dispute.respondent_evidence) < 10, EEVIDENCE_LIMIT_EXCEEDED);
+            vector::push_back(&mut dispute.respondent_evidence, evidence_url);
         };
-
-        event::emit(DisputeEvidenceAdded {
-            dispute_id: dispute.dispute_id,
-            submitted_by: sender,
-            evidence_type,
-        });
+        
+        // Emit evidence submission event
+        events::emit_evidence_submitted(
+            object::uid_to_inner(&dispute.id),
+            sender,
+            evidence_url,
+            clock::timestamp_ms(clock),
+        );
     }
 
-    /// Update dispute status (for involved parties to update before admin resolution)
-    public entry fun update_dispute_status(
+    /// Assign a resolver to the dispute (admin only)
+    public entry fun assign_resolver(
+        _admin_cap: &AdminCap,
         dispute: &mut Dispute,
-        new_status: u8,
+        resolver_address: address,
         ctx: &mut TxContext
     ) {
-        let sender = tx_context::sender(ctx);
-        assert!(sender == dispute.brand_address || sender == dispute.creator_address, types::err_not_authorized());
-        assert!(types::dispute_status_value(&dispute.status) == types::dispute_open(), types::err_invalid_status());
+        assert!(dispute.status == DISPUTE_STATUS_FILED, EINVALID_STATUS);
         
-        // Only allow transition to cancelled status by the parties involved
-        assert!(new_status == types::dispute_cancelled(), types::err_invalid_status());
-        
-        dispute.status = types::new_dispute_status(new_status);
+        dispute.status = DISPUTE_STATUS_IN_REVIEW;
+        dispute.resolver_address = option::some(resolver_address);
     }
 
-    /// Resolve dispute (admin function)
+    /// Resolve a dispute (resolver only)
     public entry fun resolve_dispute(
-        registry: &PlatformRegistry,
+        resolution_cap: &DisputeResolutionCap,
         dispute: &mut Dispute,
-        resolution_notes: String,
+        resolution_text: String,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
-        let admin = registry::get_admin(registry);
-        assert!(tx_context::sender(ctx) == admin, types::err_not_authorized());
-        assert!(types::dispute_status_value(&dispute.status) == types::dispute_open(), types::err_invalid_status());
-
-        dispute.status = types::new_dispute_status(types::dispute_resolved());
-        dispute.resolution_notes = resolution_notes;
+        // Verify resolver authorization
+        assert!(dispute.resolver_address == option::some(resolution_cap.resolver_address), EUNAUTHORIZED);
+        assert!(tx_context::sender(ctx) == resolution_cap.resolver_address, EUNAUTHORIZED);
+        assert!(dispute.status == DISPUTE_STATUS_IN_REVIEW, EINVALID_STATUS);
+        assert!(!string::is_empty(&resolution_text), EINVALID_RESOLUTION);
+        
+        // Update dispute with resolution
+        dispute.status = DISPUTE_STATUS_RESOLVED;
+        dispute.resolution = option::some(resolution_text);
         dispute.resolution_timestamp = option::some(clock::timestamp_ms(clock));
-        dispute.resolved_by = option::some(admin);
-
-        event::emit(DisputeResolved {
-            dispute_id: dispute.dispute_id,
-            resolved_by: admin,
-            resolution_notes,
-        });
+        
+        // Emit dispute resolved event
+        events::emit_dispute_resolved(
+            object::uid_to_inner(&dispute.id),
+            resolution_text,
+            tx_context::sender(ctx),
+            clock::timestamp_ms(clock),
+        );
     }
 
-    /// Close dispute (for parties to mutually close)
-    public entry fun close_dispute_by_agreement(
+    /// Close a resolved dispute (admin only)
+    public entry fun close_dispute(
+        _admin_cap: &AdminCap,
         dispute: &mut Dispute,
-        agreement_notes: String,
-        clock: &Clock,
         ctx: &mut TxContext
     ) {
-        let sender = tx_context::sender(ctx);
-        assert!(sender == dispute.brand_address || sender == dispute.creator_address, types::err_not_authorized());
-        assert!(types::dispute_status_value(&dispute.status) == types::dispute_open(), types::err_invalid_status());
-
-        dispute.status = types::new_dispute_status(types::dispute_resolved());
-        dispute.resolution_notes = agreement_notes;
-        dispute.resolution_timestamp = option::some(clock::timestamp_ms(clock));
-        dispute.resolved_by = option::some(sender);
-
-        event::emit(DisputeResolved {
-            dispute_id: dispute.dispute_id,
-            resolved_by: sender,
-            resolution_notes: agreement_notes,
-        });
+        assert!(dispute.status == DISPUTE_STATUS_RESOLVED, EINVALID_STATUS);
+        dispute.status = DISPUTE_STATUS_CLOSED;
     }
 
-    /// Escalate dispute (mark for admin attention)
-    public entry fun escalate_dispute(
-        dispute: &mut Dispute,
-        escalation_reason: String,
+    /// Create dispute resolution capability (admin only)
+    public entry fun create_dispute_resolution_cap(
+        _admin_cap: &AdminCap,
+        resolver_address: address,
         ctx: &mut TxContext
     ) {
-        let sender = tx_context::sender(ctx);
-        assert!(sender == dispute.brand_address || sender == dispute.creator_address, types::err_not_authorized());
-        assert!(types::dispute_status_value(&dispute.status) == types::dispute_open(), types::err_invalid_status());
-
-        // Update description to include escalation reason
-        dispute.description = string::utf8(b"ESCALATED: ");
-        string::append(&mut dispute.description, escalation_reason);
+        let resolution_cap = DisputeResolutionCap {
+            id: object::new(ctx),
+            resolver_address,
+        };
+        
+        transfer::public_transfer(resolution_cap, resolver_address);
     }
 
-    // ===== Query Functions =====
+    // === Helper Functions ===
 
-    /// Check if dispute is open
-    public fun is_dispute_open(dispute: &Dispute): bool {
-        types::dispute_status_value(&dispute.status) == types::dispute_open()
+    fun create_dispute(
+        dispute_id: String,
+        campaign_id: ID,
+        content_id: Option<ID>,
+        initiator: address,
+        respondent: address,
+        dispute_type: u8,
+        description: String,
+        evidence_urls: vector<String>,
+        filed_timestamp: u64,
+        ctx: &mut TxContext
+    ): Dispute {
+        Dispute {
+            id: object::new(ctx),
+            dispute_id,
+            campaign_id,
+            content_id,
+            initiator,
+            respondent,
+            dispute_type,
+            status: DISPUTE_STATUS_FILED,
+            description,
+            initiator_evidence: evidence_urls,
+            respondent_evidence: vector::empty(),
+            resolution: option::none(),
+            resolution_timestamp: option::none(),
+            filed_timestamp,
+            resolver_address: option::none(),
+        }
     }
 
-    /// Check if dispute is resolved
-    public fun is_dispute_resolved(dispute: &Dispute): bool {
-        types::dispute_status_value(&dispute.status) == types::dispute_resolved()
+    // === Getter Functions ===
+
+    public fun get_dispute_id(dispute: &Dispute): ID {
+        object::uid_to_inner(&dispute.id)
     }
 
-    /// Check if user can participate in dispute
-    public fun can_participate_in_dispute(dispute: &Dispute, addr: address): bool {
-        dispute.brand_address == addr || dispute.creator_address == addr
-    }
-
-    /// Get dispute age in milliseconds
-    public fun get_dispute_age(dispute: &Dispute, clock: &Clock): u64 {
-        clock::timestamp_ms(clock) - dispute.creation_timestamp
-    }
-
-    // ===== View Functions =====
-
-    public fun get_dispute_id(dispute: &Dispute): String {
+    public fun get_dispute_string_id(dispute: &Dispute): String {
         dispute.dispute_id
     }
 
-    public fun get_campaign_id(dispute: &Dispute): String {
+    public fun get_dispute_campaign_id(dispute: &Dispute): ID {
         dispute.campaign_id
     }
 
-    public fun get_creator_id(dispute: &Dispute): String {
-        dispute.creator_id
+    public fun get_dispute_content_id(dispute: &Dispute): Option<ID> {
+        dispute.content_id
     }
 
-    public fun get_dispute_status(dispute: &Dispute): u8 {
-        types::dispute_status_value(&dispute.status)
+    public fun get_dispute_initiator(dispute: &Dispute): address {
+        dispute.initiator
     }
 
-    public fun get_dispute_type(dispute: &Dispute): String {
+    public fun get_dispute_respondent(dispute: &Dispute): address {
+        dispute.respondent
+    }
+
+    public fun get_dispute_type(dispute: &Dispute): u8 {
         dispute.dispute_type
     }
 
-    public fun get_description(dispute: &Dispute): String {
+    public fun get_dispute_status(dispute: &Dispute): u8 {
+        dispute.status
+    }
+
+    public fun get_dispute_description(dispute: &Dispute): String {
         dispute.description
     }
 
-    public fun get_brand_evidence(dispute: &Dispute): String {
-        dispute.brand_evidence
+    public fun get_dispute_resolution(dispute: &Dispute): Option<String> {
+        dispute.resolution
     }
 
-    public fun get_creator_evidence(dispute: &Dispute): String {
-        dispute.creator_evidence
+    public fun get_dispute_filed_timestamp(dispute: &Dispute): u64 {
+        dispute.filed_timestamp
     }
 
-    public fun get_initiated_by(dispute: &Dispute): address {
-        dispute.initiated_by
-    }
-
-    public fun get_creation_timestamp(dispute: &Dispute): u64 {
-        dispute.creation_timestamp
-    }
-
-    public fun get_resolution_timestamp(dispute: &Dispute): Option<u64> {
+    public fun get_dispute_resolution_timestamp(dispute: &Dispute): Option<u64> {
         dispute.resolution_timestamp
     }
 
-    public fun get_resolution_notes(dispute: &Dispute): String {
-        dispute.resolution_notes
+    public fun get_dispute_resolver_address(dispute: &Dispute): Option<address> {
+        dispute.resolver_address
     }
 
-    public fun get_resolved_by(dispute: &Dispute): Option<address> {
-        dispute.resolved_by
+    public fun get_initiator_evidence_count(dispute: &Dispute): u64 {
+        vector::length(&dispute.initiator_evidence)
     }
 
-    public fun get_brand_address(dispute: &Dispute): address {
-        dispute.brand_address
+    public fun get_respondent_evidence_count(dispute: &Dispute): u64 {
+        vector::length(&dispute.respondent_evidence)
     }
 
-    public fun get_creator_address(dispute: &Dispute): address {
-        dispute.creator_address
+    public fun get_initiator_evidence_at(dispute: &Dispute, index: u64): String {
+        *vector::borrow(&dispute.initiator_evidence, index)
+    }
+
+    public fun get_respondent_evidence_at(dispute: &Dispute, index: u64): String {
+        *vector::borrow(&dispute.respondent_evidence, index)
+    }
+
+    // === Status Helper Functions ===
+
+    public fun dispute_type_payment(): u8 { DISPUTE_TYPE_PAYMENT }
+    public fun dispute_type_content(): u8 { DISPUTE_TYPE_CONTENT }
+    public fun dispute_type_contract(): u8 { DISPUTE_TYPE_CONTRACT }
+
+    public fun dispute_status_filed(): u8 { DISPUTE_STATUS_FILED }
+    public fun dispute_status_in_review(): u8 { DISPUTE_STATUS_IN_REVIEW }
+    public fun dispute_status_resolved(): u8 { DISPUTE_STATUS_RESOLVED }
+    public fun dispute_status_closed(): u8 { DISPUTE_STATUS_CLOSED }
+
+    public fun is_dispute_resolved(dispute: &Dispute): bool {
+        dispute.status == DISPUTE_STATUS_RESOLVED || dispute.status == DISPUTE_STATUS_CLOSED
+    }
+
+    public fun is_dispute_active(dispute: &Dispute): bool {
+        dispute.status == DISPUTE_STATUS_FILED || dispute.status == DISPUTE_STATUS_IN_REVIEW
+    }
+
+    public fun can_submit_evidence(dispute: &Dispute): bool {
+        dispute.status == DISPUTE_STATUS_FILED || dispute.status == DISPUTE_STATUS_IN_REVIEW
+    }
+
+    // === Test Only Functions ===
+    
+    #[test_only]
+    public fun create_test_dispute(
+        dispute_id: String,
+        campaign_id: ID,
+        initiator: address,
+        respondent: address,
+        dispute_type: u8,
+        description: String,
+        ctx: &mut TxContext
+    ): Dispute {
+        create_dispute(
+            dispute_id,
+            campaign_id,
+            option::none(),
+            initiator,
+            respondent,
+            dispute_type,
+            description,
+            vector::empty(),
+            0,
+            ctx
+        )
+    }
+
+    #[test_only]
+    public fun create_test_resolution_cap(
+        resolver_address: address,
+        ctx: &mut TxContext
+    ): DisputeResolutionCap {
+        DisputeResolutionCap {
+            id: object::new(ctx),
+            resolver_address,
+        }
+    }
+
+    #[test_only]
+    public fun set_dispute_status_for_testing(dispute: &mut Dispute, status: u8) {
+        dispute.status = status;
+    }
+
+    #[test_only]
+    public fun set_dispute_resolver_for_testing(dispute: &mut Dispute, resolver: address) {
+        dispute.resolver_address = option::some(resolver);
     }
 }
