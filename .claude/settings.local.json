@@ -13,7 +13,8 @@
       "WebSearch",
       "WebFetch(domain:move-book.com)",
       "WebFetch(domain:github.com)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(rm:*)"
     ],
     "deny": [],
     "ask": []
