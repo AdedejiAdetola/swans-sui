@@ -1,17 +1,12 @@
 
 
 module swans::campaign {
-    use sui::object::{Self, ID, UID};
-    use sui::tx_context::{Self, TxContext};
-    use sui::transfer;
     use sui::balance::{Self, Balance};
     use sui::coin::{Self, Coin};
     use sui::clock::{Self, Clock};
     use sui::table::{Self, Table};
     use sui::event;
     use std::string::String;
-    use std::vector;
-    use std::option::{Self, Option};
     
     use swans::registry::{Self, PlatformRegistry};
     use swans::brand::{Self, Brand, USDC};
@@ -87,7 +82,7 @@ module swans::campaign {
     // ===== Campaign Management =====
 
     /// Create a new campaign
-    public entry fun create_campaign(
+    public fun create_campaign(
         registry: &mut PlatformRegistry,
         brand: &mut Brand,
         campaign_id: String,
@@ -158,7 +153,7 @@ module swans::campaign {
     }
 
     /// Apply to a campaign
-    public entry fun apply_to_campaign(
+    public fun apply_to_campaign(
         campaign: &mut Campaign,
         creator: &Creator,
         clock: &Clock,
@@ -192,7 +187,7 @@ module swans::campaign {
     }
 
     /// Update campaign status
-    public entry fun update_campaign_status(
+    public fun update_campaign_status(
         campaign: &mut Campaign,
         new_status: u8,
         ctx: &mut TxContext
@@ -210,7 +205,7 @@ module swans::campaign {
     }
 
     /// Select winners for the campaign
-    public entry fun select_campaign_winners(
+    public fun select_campaign_winners(
         campaign: &mut Campaign,
         winners: vector<String>,
         ctx: &mut TxContext

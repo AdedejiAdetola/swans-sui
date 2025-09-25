@@ -1,18 +1,12 @@
 /// Brand and Creator profile management module
 module swans::profiles {
     use std::string::{Self, String};
-    use std::option::{Self, Option};
-    use sui::object::{Self, UID, ID};
-    use sui::tx_context::{Self, TxContext};
-    use sui::transfer;
     use sui::clock::{Self, Clock};
     
-    use swans::events;
 
     // === Error Constants ===
     const EINVALID_REPUTATION: u64 = 1;
     const EUNAUTHORIZED: u64 = 2;
-    const EINVALID_PROFILE_DATA: u64 = 3;
 
     // === Core Structs ===
 
@@ -74,7 +68,7 @@ module swans::profiles {
     // === Public Functions ===
 
     /// Create a new brand profile
-    public entry fun create_brand_profile(
+    public fun create_brand_profile(
         brand_id: String,
         brand_name: String,
         description: String,
@@ -110,7 +104,7 @@ module swans::profiles {
     }
 
     /// Create a new creator profile
-    public entry fun create_creator_profile(
+    public fun create_creator_profile(
         creator_id: String,
         name: String,
         profile_image_url: String,
@@ -156,13 +150,13 @@ module swans::profiles {
     }
 
     /// Update brand profile information
-    public entry fun update_brand_profile(
+    public fun update_brand_profile(
         brand_cap: &BrandCap,
         brand: &mut Brand,
         brand_name: String,
         description: String,
         profile_image_url: String,
-        ctx: &mut TxContext
+        _ctx: &mut TxContext
     ) {
         // Verify brand cap matches brand object
         assert!(brand_cap.brand_id == object::uid_to_inner(&brand.id), EUNAUTHORIZED);
@@ -173,7 +167,7 @@ module swans::profiles {
     }
 
     /// Update creator profile information
-    public entry fun update_creator_profile(
+    public fun update_creator_profile(
         creator_cap: &CreatorCap,
         creator: &mut Creator,
         name: String,
@@ -182,7 +176,7 @@ module swans::profiles {
         instagram_handle: Option<String>,
         tiktok_handle: Option<String>,
         youtube_handle: Option<String>,
-        ctx: &mut TxContext
+        _ctx: &mut TxContext
     ) {
         // Verify creator cap matches creator object
         assert!(creator_cap.creator_id == object::uid_to_inner(&creator.id), EUNAUTHORIZED);
@@ -198,23 +192,23 @@ module swans::profiles {
     }
 
     /// Update brand reputation (admin only)
-    public entry fun update_brand_reputation(
+    public fun update_brand_reputation(
         _admin_cap: &AdminCap,
         brand: &mut Brand,
         new_reputation: u64,
-        ctx: &mut TxContext
+        _ctx: &mut TxContext
     ) {
         assert!(new_reputation <= 5000, EINVALID_REPUTATION);
         brand.reputation = new_reputation;
     }
 
     /// Update creator reputation (admin only)
-    public entry fun update_creator_reputation(
+    public fun update_creator_reputation(
         _admin_cap: &AdminCap,
         creator: &mut Creator,
         new_reputation: u64,
         new_rank: u64,
-        ctx: &mut TxContext
+        _ctx: &mut TxContext
     ) {
         assert!(new_reputation <= 5000, EINVALID_REPUTATION);
         creator.reputation = new_reputation;
@@ -253,7 +247,7 @@ module swans::profiles {
         brand.brand_id
     }
 
-    public fun get_creator_id_string(creator_cap: &CreatorCap): String {
+    public fun get_creator_id_string(_creator_cap: &CreatorCap): String {
         // Note: This function signature needs to match usage in campaign.move
         // In practice, you'd need access to the Creator object to get the string ID
         // For now, we'll return a placeholder
@@ -331,7 +325,7 @@ module swans::profiles {
     }
 
     /// Create additional admin capability (admin only)
-    public entry fun create_admin_cap(
+    public fun create_admin_cap(
         _admin_cap: &AdminCap,
         recipient: address,
         ctx: &mut TxContext

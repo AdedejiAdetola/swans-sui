@@ -1,14 +1,10 @@
 
 
 module swans::brand {
-    use sui::object::{Self, ID, UID};
-    use sui::tx_context::{Self, TxContext};
-    use sui::transfer;
     use sui::coin::{Self, Coin};
     use sui::balance::{Self, Balance};
     use sui::clock::{Self, Clock};
     use std::string::String;
-    use std::vector;
     
     use swans::registry::{Self, PlatformRegistry};
     use swans::types;
@@ -47,7 +43,7 @@ module swans::brand {
     // ===== Brand Management =====
 
     /// Register a new brand
-    public entry fun register_brand(
+    public fun register_brand(
         registry: &mut PlatformRegistry,
         brand_id: String,
         brand_name: String,
@@ -87,7 +83,7 @@ module swans::brand {
     }
 
     /// Fund brand account with USDC
-    public entry fun fund_brand_account(
+    public fun fund_brand_account(
         brand: &mut Brand,
         payment: Coin<USDC>,
         ctx: &mut TxContext
@@ -105,7 +101,7 @@ module swans::brand {
     }
 
     /// Withdraw funds from brand account
-    public entry fun withdraw_brand_funds(
+    public fun withdraw_brand_funds(
         brand: &mut Brand,
         amount: u64,
         ctx: &mut TxContext
@@ -119,7 +115,7 @@ module swans::brand {
     }
 
     /// Update brand profile
-    public entry fun update_brand_profile(
+    public fun update_brand_profile(
         brand: &mut Brand,
         brand_name: String,
         profile_image: String,
@@ -155,10 +151,10 @@ module swans::brand {
     }
 
     /// Update brand reputation
-    public entry fun update_brand_reputation(
+    public fun update_brand_reputation(
         brand: &mut Brand,
         new_reputation: u8,
-        ctx: &mut TxContext
+        _ctx: &mut TxContext
     ) {
         // This would typically be called by the admin or through a rating system
         assert!(new_reputation >= 1 && new_reputation <= 5, types::err_invalid_status());

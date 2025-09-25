@@ -1,20 +1,13 @@
 /// Dispute resolution management module
 module swans::disputes {
     use std::string::{Self, String};
-    use std::option::{Self, Option};
-    use std::vector;
-    use sui::object::{Self, UID, ID};
-    use sui::tx_context::{Self, TxContext};
-    use sui::transfer;
     use sui::clock::{Self, Clock};
     
     use swans::events;
     use swans::profiles::{BrandCap, CreatorCap, AdminCap};
 
     // === Error Constants ===
-    const EDISPUTE_ALREADY_EXISTS: u64 = 500;
     const EINVALID_DISPUTE_TYPE: u64 = 501;
-    const EDISPUTE_NOT_FOUND: u64 = 502;
     const EUNAUTHORIZED: u64 = 503;
     const EINVALID_STATUS: u64 = 504;
     const EEVIDENCE_LIMIT_EXCEEDED: u64 = 505;
@@ -61,8 +54,8 @@ module swans::disputes {
     // === Public Functions ===
 
     /// File a dispute as a brand
-    public entry fun file_dispute_as_brand(
-        brand_cap: &BrandCap,
+    public fun file_dispute_as_brand(
+        _brand_cap: &BrandCap,
         campaign_id: ID,
         content_id: Option<ID>,
         dispute_type: u8,
@@ -103,8 +96,8 @@ module swans::disputes {
     }
 
     /// File a dispute as a creator
-    public entry fun file_dispute_as_creator(
-        creator_cap: &CreatorCap,
+    public fun file_dispute_as_creator(
+        _creator_cap: &CreatorCap,
         campaign_id: ID,
         content_id: Option<ID>,
         dispute_type: u8,
@@ -145,7 +138,7 @@ module swans::disputes {
     }
 
     /// Submit additional evidence to an existing dispute
-    public entry fun submit_evidence(
+    public fun submit_evidence(
         dispute: &mut Dispute,
         evidence_url: String,
         clock: &Clock,
@@ -176,11 +169,11 @@ module swans::disputes {
     }
 
     /// Assign a resolver to the dispute (admin only)
-    public entry fun assign_resolver(
+    public fun assign_resolver(
         _admin_cap: &AdminCap,
         dispute: &mut Dispute,
         resolver_address: address,
-        ctx: &mut TxContext
+        _ctx: &mut TxContext
     ) {
         assert!(dispute.status == DISPUTE_STATUS_FILED, EINVALID_STATUS);
         
@@ -189,7 +182,7 @@ module swans::disputes {
     }
 
     /// Resolve a dispute (resolver only)
-    public entry fun resolve_dispute(
+    public fun resolve_dispute(
         resolution_cap: &DisputeResolutionCap,
         dispute: &mut Dispute,
         resolution_text: String,
@@ -217,17 +210,17 @@ module swans::disputes {
     }
 
     /// Close a resolved dispute (admin only)
-    public entry fun close_dispute(
+    public fun close_dispute(
         _admin_cap: &AdminCap,
         dispute: &mut Dispute,
-        ctx: &mut TxContext
+        _ctx: &mut TxContext
     ) {
         assert!(dispute.status == DISPUTE_STATUS_RESOLVED, EINVALID_STATUS);
         dispute.status = DISPUTE_STATUS_CLOSED;
     }
 
     /// Create dispute resolution capability (admin only)
-    public entry fun create_dispute_resolution_cap(
+    public fun create_dispute_resolution_cap(
         _admin_cap: &AdminCap,
         resolver_address: address,
         ctx: &mut TxContext

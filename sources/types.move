@@ -1,6 +1,4 @@
 module swans::types {
-    use std::string::String;
-    use std::option::Option;
 
     // ===== Error Codes =====
     const E_NOT_AUTHORIZED: u64 = 1;

@@ -1,7 +1,4 @@
 module swans::payment {
-    use sui::object::{Self, UID};
-    use sui::tx_context::TxContext;
-    use sui::transfer;
     use sui::event;
     use std::string::{Self, String};
     
@@ -166,13 +163,13 @@ module swans::payment {
     // ===== Helper Functions =====
 
     /// Generate a transaction hash (simplified for demo)
-    fun generate_transaction_hash(ctx: &TxContext): String {
+    fun generate_transaction_hash(_ctx: &TxContext): String {
         // In a real implementation, this would use the actual transaction digest
         string::utf8(b"sui_tx_hash_placeholder")
     }
 
     /// Generate a receipt ID from UID
-    fun generate_receipt_id(uid: &UID): String {
+    fun generate_receipt_id(_uid: &UID): String {
         // In a real implementation, this would convert the UID to a string
         string::utf8(b"receipt_id_placeholder")
     }

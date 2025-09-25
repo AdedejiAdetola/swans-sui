@@ -1,7 +1,4 @@
 module swans::registry {
-    use sui::object::{Self, ID, UID};
-    use sui::tx_context::{Self, TxContext};
-    use sui::transfer;
     use sui::table::{Self, Table};
     use std::string::String;
 
@@ -110,7 +107,7 @@ module swans::registry {
     // ===== Admin Functions =====
     
     /// Transfer admin rights
-    public entry fun transfer_admin(
+    public fun transfer_admin(
         registry: &mut PlatformRegistry,
         new_admin: address,
         ctx: &mut TxContext
@@ -120,7 +117,7 @@ module swans::registry {
     }
 
     /// Remove brand from registry (admin only)
-    public entry fun remove_brand(
+    public fun remove_brand(
         registry: &mut PlatformRegistry,
         brand_id: String,
         ctx: &mut TxContext
@@ -130,7 +127,7 @@ module swans::registry {
     }
 
     /// Remove creator from registry (admin only)
-    public entry fun remove_creator(
+    public fun remove_creator(
         registry: &mut PlatformRegistry,
         creator_id: String,
         ctx: &mut TxContext

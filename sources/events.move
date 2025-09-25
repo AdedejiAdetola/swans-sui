@@ -1,7 +1,6 @@
 /// Event system for Harmonia platform
 module swans::events {
     use std::string::String;
-    use sui::object::ID;
     use sui::event;
 
     // === Campaign Events ===

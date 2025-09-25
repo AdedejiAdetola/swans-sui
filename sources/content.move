@@ -1,11 +1,7 @@
 module swans::content {
-    use sui::object::{Self, UID};
-    use sui::tx_context::{Self, TxContext};
-    use sui::transfer;
     use sui::clock::{Self, Clock};
     use sui::event;
     use std::string::{Self, String};
-    use std::option::{Self, Option};
     
     use swans::campaign::{Self, Campaign};
     use swans::creator::{Self, Creator};
@@ -63,7 +59,7 @@ module swans::content {
     // ===== Content Management =====
 
     /// Submit content for campaign
-    public entry fun submit_content(
+    public fun submit_content(
         campaign: &mut Campaign,
         creator: &Creator,
         content_id: String,
@@ -105,7 +101,7 @@ module swans::content {
     }
 
     /// Review and approve/reject content
-    public entry fun review_content(
+    public fun review_content(
         campaign: &Campaign,
         content: &mut Content,
         approve: bool,
@@ -135,7 +131,7 @@ module swans::content {
     }
 
     /// Publish approved content (triggers base payment)
-    public entry fun publish_content(
+    public fun publish_content(
         campaign: &mut Campaign,
         content: &mut Content,
         creator: &mut Creator,
@@ -176,7 +172,7 @@ module swans::content {
     }
 
     /// Update engagement metrics for published content
-    public entry fun update_engagement_metrics(
+    public fun update_engagement_metrics(
         campaign: &Campaign,
         content: &mut Content,
         likes: u64,
@@ -208,7 +204,7 @@ module swans::content {
     }
 
     /// Process bonus payment for winning content
-    public entry fun process_bonus_payment(
+    public fun process_bonus_payment(
         campaign: &mut Campaign,
         content: &Content,
         creator: &mut Creator,

@@ -1,9 +1,6 @@
 
 
 module swans::creator {
-    use sui::object::{Self, UID};
-    use sui::tx_context::{Self, TxContext};
-    use sui::transfer;
     use sui::clock::{Self, Clock};
     use std::string::String;
     
@@ -51,7 +48,7 @@ module swans::creator {
     // ===== Creator Management =====
 
     /// Register a new creator
-    public entry fun register_creator(
+    public fun register_creator(
         registry: &mut PlatformRegistry,
         creator_id: String,
         name: String,
@@ -103,7 +100,7 @@ module swans::creator {
     }
 
     /// Update creator profile
-    public entry fun update_creator_profile(
+    public fun update_creator_profile(
         creator: &mut Creator,
         name: String,
         profile_image: String,
@@ -118,7 +115,7 @@ module swans::creator {
     }
 
     /// Update social media handles
-    public entry fun update_social_media_handles(
+    public fun update_social_media_handles(
         creator: &mut Creator,
         twitter: String,
         instagram: String,
@@ -137,7 +134,7 @@ module swans::creator {
     }
 
     /// Mark creator as verified (admin function)
-    public entry fun verify_creator(
+    public fun verify_creator(
         registry: &PlatformRegistry,
         creator: &mut Creator,
         ctx: &mut TxContext
@@ -165,10 +162,10 @@ module swans::creator {
     }
 
     /// Update creator reputation
-    public entry fun update_creator_reputation(
+    public fun update_creator_reputation(
         creator: &mut Creator,
         new_reputation: u8,
-        ctx: &mut TxContext
+        _ctx: &mut TxContext
     ) {
         // This would typically be called by the admin or through a rating system
         assert!(new_reputation >= 1 && new_reputation <= 5, types::err_invalid_status());
