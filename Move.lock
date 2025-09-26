@@ -24,3 +24,14 @@ dependencies = [
 compiler-version = "1.57.0"
 edition = "2024.beta"
 flavor = "sui"
+<<<<<<< HEAD
+=======
+
+[env]
+
+[env.custom]
+chain-id = "a5e2ba5d"
+original-published-id = "0x819df9910ee7ff195918fe87fcc18c889a78d0608b1e1d3087412963c7bdd6d3"
+latest-published-id = "0x819df9910ee7ff195918fe87fcc18c889a78d0608b1e1d3087412963c7bdd6d3"
+published-version = "1"
+>>>>>>> 903a414 (pushing typescript test file)

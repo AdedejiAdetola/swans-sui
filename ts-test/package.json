@@ -1,0 +1,28 @@
+{
+  "name": "swans-ts-tests",
+  "version": "1.0.0",
+  "description": "TypeScript tests for SWANS smart contract on Sui",
+  "type": "module",
+  "scripts": {
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
+    "build": "tsc",
+    "dev": "vitest --watch --reporter=verbose"
+  },
+  "dependencies": {
+    "@mysten/sui": "^1.38.0",
+    "@mysten/bcs": "^1.1.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.8.3",
+    "vitest": "^2.0.0",
+    "@vitest/ui": "^2.0.0",
+    "dotenv": "^16.4.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
