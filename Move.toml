@@ -6,7 +6,6 @@ authors = ["Harmonia Team"]
 license = "MIT"
 
 [dependencies]
-Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/devnet" }
 
 [addresses]
 swans = "0x0"

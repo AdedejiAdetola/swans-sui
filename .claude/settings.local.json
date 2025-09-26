@@ -14,7 +14,8 @@
       "WebFetch(domain:move-book.com)",
       "WebFetch(domain:github.com)",
       "Bash(git checkout:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(node:*)"
     ],
     "deny": [],
     "ask": []

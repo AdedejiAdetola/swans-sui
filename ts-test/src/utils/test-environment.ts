@@ -24,8 +24,9 @@ export class TestEnvironment {
     const networkUrl = process.env.SUI_RPC_URL || NETWORK_CONFIG.localnet;
     this.client = new SuiClient({ url: networkUrl });
 
-    // Get package ID from environment
+    // Get package ID and registry ID from environment
     this.packageId = process.env.PACKAGE_ID || '0x0';
+    this.registryId = process.env.REGISTRY_ID || null;
 
     // Initialize keypairs
     this.adminKeypair = this.createOrLoadKeypair('ADMIN_PRIVATE_KEY');
@@ -34,20 +35,11 @@ export class TestEnvironment {
   }
 
   private createOrLoadKeypair(envKey: string): Ed25519Keypair {
-    const privateKey = process.env[envKey];
-
-    if (privateKey) {
-      try {
-        // The private keys from our generator are already base64 encoded secret keys
-        const secretKey = fromBase64(privateKey);
-        return Ed25519Keypair.fromSecretKey(secretKey);
-      } catch (error) {
-        console.warn(`Failed to load keypair from ${envKey}: ${error}, generating new one`);
-      }
-    }
-
-    console.warn(`No private key found for ${envKey}, generating new one`);
-    return new Ed25519Keypair();
+    // For testing purposes, always generate new keypairs
+    // This allows us to test the contract functionality without requiring specific private keys
+    const keypair = new Ed25519Keypair();
+    console.log(`Generated new keypair for ${envKey}: ${keypair.toSuiAddress()}`);
+    return keypair;
   }
 
   async initialize(): Promise<void> {
