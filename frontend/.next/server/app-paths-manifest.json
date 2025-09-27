@@ -1,0 +1,7 @@
+{
+  "/page": "app/page.js",
+  "/brand/page": "app/brand/page.js",
+  "/creator/page": "app/creator/page.js",
+  "/brand/create-campaign/page": "app/brand/create-campaign/page.js",
+  "/brand/create-campaign/success/page": "app/brand/create-campaign/success/page.js"
+}

@@ -15,7 +15,14 @@
       "WebFetch(domain:github.com)",
       "Bash(git checkout:*)",
       "Bash(rm:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(npx create-next-app:*)",
+      "Bash(npm install:*)",
+      "WebFetch(domain:sdk.mystenlabs.com)",
+      "Bash(npm run build:*)",
+      "Bash(npx next:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx typescript:*)"
     ],
     "deny": [],
     "ask": []
