@@ -5,8 +5,9 @@ import { MODULES, TEST_DATA, GAS_SETTINGS } from '../config/constants.js';
 export class TransactionHelpers {
   constructor(private testEnv: TestEnvironment) {}
 
-  // Registry Operations
+  // Registry Operations - Skip since registry is already deployed
   createInitializeRegistryTx(): Transaction {
+    // Registry is already deployed, so this is mainly for reference
     const tx = this.testEnv.createTransaction();
 
     tx.moveCall({
@@ -45,9 +46,11 @@ export class TransactionHelpers {
   createFundBrandTx(brandObjectId: string, amount: number = 50000): Transaction {
     const tx = this.testEnv.createTransaction();
 
-    // First, create USDC coins for testing
+    // Create USDC coins for testing using the standard coin module
+    // Note: USDC type is defined in the brand module
     const [coin] = tx.moveCall({
-      target: `${this.testEnv.packageId}::${MODULES.USDC}::mint_for_testing`,
+      target: `0x2::coin::mint_for_testing`,
+      typeArguments: [`${this.testEnv.packageId}::${MODULES.BRAND}::USDC`],
       arguments: [tx.pure.u64(amount)],
     });
 

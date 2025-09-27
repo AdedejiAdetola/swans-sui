@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { getTestEnvironment } from '../config/test-setup.js';
 import { TransactionHelpers } from '../utils/transaction-helpers.js';
+import { TestSetupHelpers } from '../utils/test-setup-helpers.js';
 import { SuiAssertions } from '../utils/assertions.js';
 import { TEST_DATA, TEST_TIMING } from '../config/constants.js';
 import type { TestEnvironment } from '../utils/test-environment.js';
@@ -8,17 +9,18 @@ import type { TestEnvironment } from '../utils/test-environment.js';
 describe('Campaign Lifecycle Tests', () => {
   let testEnv: TestEnvironment;
   let txHelpers: TransactionHelpers;
+  let setupHelpers: TestSetupHelpers;
 
   beforeAll(() => {
     testEnv = getTestEnvironment();
     txHelpers = new TransactionHelpers(testEnv);
+    setupHelpers = new TestSetupHelpers(testEnv, txHelpers);
   });
 
   describe('Campaign Creation', () => {
     it('should create a new campaign successfully', async () => {
-      if (!testEnv.registryId || !testEnv.brandId) {
-        throw new Error('Prerequisites not met: Registry and Brand required');
-      }
+      // Ensure brand is registered and funded
+      await setupHelpers.ensureBrandRegistered();
 
       const tx = txHelpers.createCampaignTx(
         testEnv.registryId,
@@ -68,9 +70,8 @@ describe('Campaign Lifecycle Tests', () => {
     });
 
     it('should verify campaign object properties', async () => {
-      if (!testEnv.campaignId) {
-        throw new Error('Campaign not created');
-      }
+      // Ensure campaign exists
+      await setupHelpers.ensureCampaignCreated();
 
       const campaignObject = await testEnv.getObjectDetails(testEnv.campaignId);
       expect(campaignObject.data).toBeDefined();
@@ -111,9 +112,8 @@ describe('Campaign Lifecycle Tests', () => {
     });
 
     it('should update brand campaign count', async () => {
-      if (!testEnv.brandId) {
-        throw new Error('Brand not found');
-      }
+      // Ensure brand and campaign exist
+      await setupHelpers.ensureCampaignCreated();
 
       const brandObject = await testEnv.getObjectDetails(testEnv.brandId);
       if (brandObject.data?.content && 'fields' in brandObject.data.content) {

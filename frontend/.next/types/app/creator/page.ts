@@ -1,4 +1,4 @@
-// File: /home/grey/web3/swans-sui/frontend/src/app/creator/page.tsx
+// File: /Users/favourolaboye/Downloads/sui-frontend/swans-sui-main/frontend/src/app/creator/page.tsx
 import * as entry from '../../../../src/app/creator/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

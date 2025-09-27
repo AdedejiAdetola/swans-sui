@@ -399,11 +399,32 @@ describe('End-to-End Integration Tests', () => {
       try {
         await testEnv.executeTransaction(tx, testEnv.adminKeypair);
         expect.fail('Should have thrown an error');
-      } catch (error) {
+      } catch (error: any) {
         expect(error).toBeDefined();
         expect(error instanceof Error).toBe(true);
+
+        // Log the error for debugging
+        console.log('Caught error:', error.message);
+
         // Error should contain useful information
         expect(error.message.length).toBeGreaterThan(0);
+
+        // Check that the error is the expected FunctionNotFound error
+        const errorMessage = error.message;
+        const hasExpectedError =
+          errorMessage.includes('FunctionNotFound') ||
+          errorMessage.includes('invalid_function') ||
+          errorMessage.includes('Dry run failed');
+
+        expect(hasExpectedError).toBe(true);
+
+        // If error has cause property, check it contains function details
+        if ('cause' in error && error.cause) {
+          const cause = error.cause as any;
+          if (cause.executionErrorSource) {
+            expect(cause.executionErrorSource).toContain('invalid_function');
+          }
+        }
       }
     });
   });

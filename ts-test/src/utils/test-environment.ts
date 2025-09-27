@@ -35,11 +35,9 @@ export class TestEnvironment {
   }
 
   private createOrLoadKeypair(envKey: string): Ed25519Keypair {
-    // For testing purposes, always generate new keypairs
-    // This allows us to test the contract functionality without requiring specific private keys
-    const keypair = new Ed25519Keypair();
-    console.log(`Generated new keypair for ${envKey}: ${keypair.toSuiAddress()}`);
-    return keypair;
+    // For this test setup, we'll generate new keypairs
+    // Note: In production, you'd load actual funded keypairs
+    return new Ed25519Keypair();
   }
 
   async initialize(): Promise<void> {
@@ -66,28 +64,78 @@ export class TestEnvironment {
   }
 
   private async fundTestAccounts(): Promise<void> {
-    const accounts = [
-      { name: 'admin', address: this.adminKeypair.toSuiAddress() },
-      { name: 'brand', address: this.brandKeypair.toSuiAddress() },
-      { name: 'creator', address: this.creatorKeypair.toSuiAddress() },
+    // Fund test accounts using Sui CLI faucet (more reliable than HTTP)
+    const addresses = [
+      this.adminKeypair.toSuiAddress(),
+      this.brandKeypair.toSuiAddress(),
+      this.creatorKeypair.toSuiAddress()
     ];
 
-    for (const account of accounts) {
-      const balance = await this.client.getBalance({ owner: account.address });
-      const balanceValue = parseInt(balance.totalBalance);
+    for (const address of addresses) {
+      try {
+        // Check if account already has sufficient funds
+        const balance = await this.client.getBalance({ owner: address });
+        const currentBalance = parseInt(balance.totalBalance);
 
-      if (balanceValue < 1_000_000_000) { // Less than 1 SUI
-        console.log(`Funding ${account.name} account: ${account.address}`);
-        // In real scenario, you would request from faucet or transfer funds
-        // For local testing, this might not be needed if accounts are pre-funded
+        if (currentBalance < 1000000000) { // Less than 1 SUI
+          console.log(`Funding account ${address} via CLI...`);
+
+          try {
+            // Use Sui CLI faucet command which is more reliable
+            const { exec } = await import('child_process');
+            const { promisify } = await import('util');
+            const execAsync = promisify(exec);
+
+            await execAsync(`sui client faucet --address ${address}`);
+            console.log(`✅ Funded ${address}`);
+
+            // Wait a bit for the funding to propagate
+            await new Promise(resolve => setTimeout(resolve, 3000));
+          } catch (cliError) {
+            console.warn(`CLI faucet failed for ${address}, trying HTTP fallback...`);
+
+            // Fallback to HTTP faucet with better error handling
+            try {
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
+              const faucetResponse = await fetch('https://faucet.devnet.sui.io/gas', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  FixedAmountRequest: {
+                    recipient: address
+                  }
+                }),
+                signal: controller.signal
+              });
+
+              clearTimeout(timeoutId);
+
+              if (faucetResponse.ok) {
+                console.log(`✅ Funded ${address} via HTTP fallback`);
+                await new Promise(resolve => setTimeout(resolve, 3000));
+              } else {
+                console.warn(`HTTP faucet failed for ${address}: ${faucetResponse.statusText}`);
+              }
+            } catch (httpError) {
+              console.warn(`Both faucet methods failed for ${address}:`, httpError);
+            }
+          }
+        } else {
+          console.log(`✅ Account ${address} already funded`);
+        }
+      } catch (error) {
+        console.warn(`Error checking/funding ${address}:`, error);
       }
     }
   }
 
   private async ensurePackageDeployed(): Promise<void> {
     if (this.packageId === '0x0') {
-      console.warn('Package ID not set. Please deploy the package first and set PACKAGE_ID in .env');
-      return;
+      throw new Error('Package ID not set. Please set PACKAGE_ID in .env');
     }
 
     try {
@@ -95,8 +143,22 @@ export class TestEnvironment {
         id: this.packageId,
         options: { showType: true }
       });
+      console.log(`✅ Package ${this.packageId} found`);
     } catch (error) {
-      throw new Error(`Package ${this.packageId} not found. Please deploy the package first.`);
+      throw new Error(`Package ${this.packageId} not found: ${error}`);
+    }
+
+    // Verify registry exists
+    if (this.registryId) {
+      try {
+        await this.client.getObject({
+          id: this.registryId,
+          options: { showContent: true }
+        });
+        console.log(`✅ Registry ${this.registryId} found`);
+      } catch (error) {
+        console.warn(`Registry ${this.registryId} not found: ${error}`);
+      }
     }
   }
 

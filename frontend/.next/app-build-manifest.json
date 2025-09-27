@@ -16,11 +16,6 @@
       "static/chunks/main-app.js",
       "static/chunks/app/brand/page.js"
     ],
-    "/brand/create-campaign/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/brand/create-campaign/page.js"
-    ],
     "/creator/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
